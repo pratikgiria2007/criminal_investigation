@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Interrogations{% endblock %}
+{% block page_title %}Interrogation Logs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-text">
+        <h2>Interrogation Records</h2>
+        <p>Officer–suspect interview logs with outcome tracking</p>
+    </div>
+    {% if session.get('role') == 'Official' %}
+    <button class="btn btn-primary btn-sm" id="btn-add-interrogation">＋ Log Interrogation</button>
+    {% endif %}
+</div>
+
+<!-- Stats -->
+<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0;">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Total Sessions</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--text-white);" id="int-total">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:#22c55e20;">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Confessions</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:#22c55e;" id="int-confession">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-amber-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Pending</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-amber);" id="int-pending">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-red-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">No Confession</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-red);" id="int-denied">—</div>
+    </div>
+</div>
+
+<div class="card full-width">
+    <div class="table-toolbar">
+        <div class="table-search">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="int-search" placeholder="Search suspect, officer, case..." autocomplete="off">
+        </div>
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="Confession">Confession</button>
+            <button class="filter-btn" data-filter="Pending">Pending</button>
+            <button class="filter-btn" data-filter="No Confession">No Confession</button>
+        </div>
+        <div style="margin-left:auto; font-size:0.78rem; color:var(--text-muted);">
+            <span id="int-count" style="color:var(--text-light); font-weight:600;">—</span> sessions
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table" id="int-table">
+            <thead>
+                <tr>
+                    <th style="width:60px;">ID</th>
+                    <th>Date/Time</th>
+                    <th>Suspect</th>
+                    <th>Officer</th>
+                    <th>Case</th>
+                    <th>Location</th>
+                    <th>Outcome</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="int-tbody">
+                <tr><td colspan="8" class="table-empty"><span class="table-empty-icon">🎙️</span> Loading interrogations...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Notes Drawer -->
+<div class="modal-overlay" id="notes-modal" style="display:none;">
+    <div class="modal" style="max-width:560px;">
+        <div class="modal-header">
+            <h3>Interrogation Notes</h3>
+            <button class="modal-close" id="notes-modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="notes-content" style="white-space:pre-wrap; font-family:var(--font-mono); font-size:0.85rem; color:var(--text-light); background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px; min-height:100px;">—</div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="int-modal" style="display:none;">
+    <div class="modal" style="max-width:540px;">
+        <div class="modal-header">
+            <h3 id="int-modal-title">Log Interrogation</h3>
+            <button class="modal-close" id="int-modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="int-id">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Case ID *</label>
+                    <input type="number" id="int-case-id" placeholder="Case ID">
+                </div>
+                <div class="form-group">
+                    <label>Suspect ID *</label>
+                    <input type="number" id="int-suspect-id" placeholder="Suspect ID">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Officer ID *</label>
+                    <input type="number" id="int-officer-id" placeholder="Officer ID">
+                </div>
+                <div class="form-group">
+                    <label>Date &amp; Time *</label>
+                    <input type="datetime-local" id="int-datetime">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" id="int-location" placeholder="Interrogation room / precinct">
+            </div>
+            <div class="form-group">
+                <label>Outcome</label>
+                <select id="int-outcome">
+                    <option value="Pending">Pending</option>
+                    <option value="Confession">Confession</option>
+                    <option value="No Confession">No Confession</option>
+                    <option value="Alibi Provided">Alibi Provided</option>
+                    <option value="Inconclusive">Inconclusive</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Notes / Transcript</label>
+                <textarea id="int-notes" rows="4" placeholder="Key notes from the session..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="int-cancel-btn">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="int-save-btn">Save</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allInterrogations = [];
+let activeFilter = 'all';
+
+async function loadInterrogations() {
+    const res = await fetch('/api/interrogations');
+    if (!res.ok) return;
+    allInterrogations = await res.json();
+    document.getElementById('int-total').textContent = allInterrogations.length;
+    document.getElementById('int-confession').textContent = allInterrogations.filter(i => i.outcome === 'Confession').length;
+    document.getElementById('int-pending').textContent = allInterrogations.filter(i => i.outcome === 'Pending').length;
+    document.getElementById('int-denied').textContent = allInterrogations.filter(i => i.outcome === 'No Confession').length;
+    applyFilter();
+}
+
+const outcomeColors = { 'Confession': '#22c55e', 'Pending': 'var(--accent-amber)', 'No Confession': 'var(--accent-red)', 'Alibi Provided': '#3b82f6', 'Inconclusive': 'var(--text-muted)' };
+
+function applyFilter() {
+    let data = [...allInterrogations];
+    const q = document.getElementById('int-search').value.toLowerCase();
+    if (q) data = data.filter(i =>
+        (i.suspect_name||'').toLowerCase().includes(q) ||
+        (i.officer_name||'').toLowerCase().includes(q) ||
+        (i.case_title||'').toLowerCase().includes(q) ||
+        (i.location||'').toLowerCase().includes(q)
+    );
+    if (activeFilter !== 'all') data = data.filter(i => i.outcome === activeFilter);
+    renderInterrogations(data);
+}
+
+function renderInterrogations(data) {
+    const tbody = document.getElementById('int-tbody');
+    document.getElementById('int-count').textContent = data.length;
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="table-empty"><span class="table-empty-icon">🎙️</span> No interrogations found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(i => {
+        const dt = i.date_time ? new Date(i.date_time).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'}) : '—';
+        const color = outcomeColors[i.outcome] || 'var(--text-muted)';
+        return `
+        <tr>
+            <td><span class="badge badge-default">#${i.interrogation_id}</span></td>
+            <td style="font-family:var(--font-mono); font-size:0.8rem;">${dt}</td>
+            <td><strong>${i.suspect_name || '—'}</strong></td>
+            <td>${i.officer_name || '—'} <span style="font-size:0.75rem; color:var(--text-muted);">[${i.badge_number || ''}]</span></td>
+            <td><a href="/cases/${i.case_id}" style="color:var(--accent-amber);">${i.case_title || '—'}</a></td>
+            <td style="font-size:0.82rem; color:var(--text-muted);">${i.location || '—'}</td>
+            <td><span style="color:${color}; font-weight:600;">${i.outcome || '—'}</span></td>
+            <td>
+                <button class="btn btn-ghost btn-sm" onclick="showNotes('${(i.notes||'No notes recorded.').replace(/'/g,"\\'")}')" title="View Notes">📋</button>
+                <button class="btn btn-ghost btn-sm" onclick="editInterrogation(${i.interrogation_id})" title="Edit">✏️</button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteInterrogation(${i.interrogation_id})" title="Delete" style="color:var(--accent-red);">🗑️</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+document.getElementById('int-search').addEventListener('input', applyFilter);
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        activeFilter = this.dataset.filter;
+        applyFilter();
+    });
+});
+
+function showNotes(notes) {
+    document.getElementById('notes-content').textContent = notes;
+    document.getElementById('notes-modal').style.display = 'flex';
+}
+document.getElementById('notes-modal-close').addEventListener('click', () => { document.getElementById('notes-modal').style.display = 'none'; });
+
+
+
+
+document.getElementById('btn-add-interrogation')?.addEventListener('click', () => openModal('Log Interrogation'));
+document.getElementById('int-modal-close').addEventListener('click', closeModal);
+document.getElementById('int-cancel-btn').addEventListener('click', closeModal);
+
+async function editInterrogation(id) {
+    const res = await fetch(`/api/interrogations/${id}`);
+    const i = await res.json();
+    document.getElementById('int-id').value = i.interrogation_id;
+    document.getElementById('int-case-id').value = i.case_id || '';
+    document.getElementById('int-suspect-id').value = i.suspect_id || '';
+    document.getElementById('int-officer-id').value = i.officer_id || '';
+    document.getElementById('int-datetime').value = i.date_time ? i.date_time.replace(' ', 'T').slice(0,16) : '';
+    document.getElementById('int-location').value = i.location || '';
+    document.getElementById('int-outcome').value = i.outcome || 'Pending';
+    document.getElementById('int-notes').value = i.notes || '';
+    openModal('Edit Interrogation');
+}
+
+document.getElementById('int-save-btn').addEventListener('click', async () => {
+    const id = document.getElementById('int-id').value;
+    const payload = {
+        case_id: document.getElementById('int-case-id').value,
+        suspect_id: document.getElementById('int-suspect-id').value,
+        officer_id: document.getElementById('int-officer-id').value,
+        date_time: document.getElementById('int-datetime').value,
+        location: document.getElementById('int-location').value,
+        outcome: document.getElementById('int-outcome').value,
+        notes: document.getElementById('int-notes').value
+    };
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/interrogations/${id}` : '/api/interrogations';
+    const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    showToast(res.ok ? data.message : (data.error || 'Error'), res.ok ? 'success' : 'error');
+    if (res.ok) { closeModal(); loadInterrogations(); }
+});
+
+async function deleteInterrogation(id) {
+    if (!confirm('Delete this interrogation record?')) return;
+    const res = await fetch(`/api/interrogations/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    showToast(data.message || data.error, res.ok ? 'success' : 'error');
+    if (res.ok) loadInterrogations();
+}
+
+loadInterrogations();
+</script>
+{% endblock %}

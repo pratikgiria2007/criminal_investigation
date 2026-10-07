@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - C.I.D. SYSTEM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(69,123,157,0.12) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(42,157,143,0.08) 0%, transparent 40%);
+        }
+
+        .auth-wrapper {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .auth-logo h1 {
+            font-family: var(--font-mono);
+            font-size: 1.6rem;
+            letter-spacing: 3px;
+            color: var(--text-light);
+        }
+        .auth-logo p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+
+        .auth-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+        }
+
+        /* Tabs */
+        .auth-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .auth-tab.active {
+            color: var(--accent-blue);
+            border-bottom: 2px solid var(--accent-blue);
+            background-color: rgba(69,123,157,0.07);
+        }
+        .auth-tab:hover:not(.active) {
+            color: var(--text-light);
+            background-color: rgba(255,255,255,0.02);
+        }
+
+        /* Forms */
+        .auth-panel { display: none; padding: 30px; }
+        .auth-panel.active { display: block; }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 7px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 11px 14px;
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-light);
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(69,123,157,0.15);
+        }
+
+        .btn-auth {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: var(--accent-blue);
+            color: #fff;
+            font-family: var(--font-sans);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-auth:hover { background-color: #34607a; }
+        .btn-auth:active { transform: scale(0.98); }
+
+        .alert-msg {
+            padding: 10px 14px;
+            border-radius: 5px;
+            font-size: 0.88rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .alert-error { background: rgba(230,57,70,0.12); border: 1px solid rgba(230,57,70,0.4); color: var(--accent-red); }
+        .alert-success { background: rgba(42,157,143,0.12); border: 1px solid rgba(42,157,143,0.4); color: var(--accent-green); }
+
+        .role-info {
+            margin-top: 14px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.5;
+        }
+        .role-info span {
+            color: var(--accent-amber);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-logo">
+            <h1>⚖ C.I.D. SYSTEM</h1>
+            <p>Criminal Investigation Database — Restricted Access Portal</p>
+        </div>
+
+        <div class="auth-card">
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+                <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Create Account</button>
+            </div>
+
+            <!-- Login Panel -->
+            <div class="auth-panel active" id="panel-login">
+                <div class="alert-msg alert-error" id="login-error"></div>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" name="username" class="form-control" placeholder="Enter username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" name="password" class="form-control" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="btn-auth">Access System</button>
+                </form>
+                <p class="role-info">Officers: use credentials assigned by administration.<br>Public users: <span onclick="switchTab('register')" style="cursor:pointer; text-decoration:underline;">create a free account.</span></p>
+            </div>
+
+            <!-- Register Panel -->
+            <div class="auth-panel" id="panel-register">
+                <div class="alert-msg alert-error" id="reg-error"></div>
+                <div class="alert-msg alert-success" id="reg-success"></div>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <input type="text" id="reg-username" name="username" class="form-control" placeholder="Min. 3 characters" required minlength="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password</label>
+                        <input type="password" id="reg-password" name="password" class="form-control" placeholder="Min. 6 characters" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-confirm">Confirm Password</label>
+                        <input type="password" id="reg-confirm" class="form-control" placeholder="Repeat password" required>
+                    </div>
+                    <button type="submit" class="btn-auth" style="background-color: var(--accent-green);">Create Account</button>
+                </form>
+                <p class="role-info">New accounts have <span>Casual (Public)</span> access.<br>To get Official access, contact the department administrator.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('panel-' + tab).classList.add('active');
+        }
+
+        // Login form
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const errEl = document.getElementById('login-error');
+            errEl.style.display = 'none';
+
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('login-username').value,
+                    password: document.getElementById('login-password').value
+                })
+            })
+            .then(res => {
+                if (res.ok) {
+                    window.location.href = '/';
+                } else {
+                    return res.json().then(d => { throw new Error(d.error || 'Login failed'); });
+                }
+            })
+            .catch(err => {
+                errEl.innerText = err.message;
+                errEl.style.display = 'block';
+            });
+        });
+
+        // Register form
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const errEl = document.getElementById('reg-error');
+            const okEl = document.getElementById('reg-success');
+            errEl.style.display = 'none';
+            okEl.style.display = 'none';
+
+            const pw = document.getElementById('reg-password').value;
+            const confirm = document.getElementById('reg-confirm').value;
+            if (pw !== confirm) {
+                errEl.innerText = 'Passwords do not match.';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('reg-username').value,
+                    password: pw
+                })
+            })
+            .then(res => res.json().then(d => ({ ok: res.ok, data: d })))
+            .then(({ ok, data }) => {
+                if (ok) {
+                    okEl.innerText = 'Account created! Redirecting to login...';
+                    okEl.style.display = 'block';
+                    this.reset();
+                    setTimeout(() => switchTab('login'), 1500);
+                } else {
+                    throw new Error(data.error || 'Registration failed');
+                }
+            })
+            .catch(err => {
+                errEl.innerText = err.message;
+                errEl.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>

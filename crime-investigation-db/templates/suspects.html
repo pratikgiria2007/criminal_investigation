@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Suspects Database{% endblock %}
+{% block page_title %}Suspects Database{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-text">
+        <h2>Registered Suspects</h2>
+        <p>All individuals of interest across active and archived investigations</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-ghost btn-sm" id="btn-toggle-view" title="Toggle view">⊞ Grid View</button>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;" id="suspect-stat-row">
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0;">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Total Suspects</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--text-white);" id="susp-total">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-red-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Repeat Offenders</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-red);" id="susp-repeat">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-amber-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Avg Cases Per Suspect</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-amber);" id="susp-avg">—</div>
+    </div>
+</div>
+
+<div class="card full-width">
+    <!-- Toolbar -->
+    <div class="table-toolbar">
+        <div class="table-search">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="suspect-search" placeholder="Search by name, gender..." autocomplete="off">
+        </div>
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All Suspects</button>
+            <button class="filter-btn" data-filter="repeat">🚨 Repeat Offenders</button>
+            <button class="filter-btn" data-filter="record">Has Record</button>
+        </div>
+        <div style="margin-left:auto; font-size:0.78rem; color:var(--text-muted);">
+            <span id="suspects-count" style="color:var(--text-light); font-weight:600;">—</span> shown
+        </div>
+    </div>
+
+    <!-- Table View (default) -->
+    <div id="table-view">
+        <div class="table-responsive">
+            <table class="data-table" id="suspects-table">
+                <thead>
+                    <tr>
+                        <th style="width:70px;">ID</th>
+                        <th>Name</th>
+                        <th>DOB</th>
+                        <th>Gender</th>
+                        <th>Criminal Record</th>
+                        <th>Cases</th>
+                        <th>Flags</th>
+                    </tr>
+                </thead>
+                <tbody id="suspects-tbody">
+                    <tr>
+                        <td colspan="7" class="table-empty">
+                            <span class="table-empty-icon">🔍</span>
+                            Loading suspects...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Card View (hidden by default) -->
+    <div id="card-view" style="display:none;">
+        <div class="suspects-grid" id="suspects-grid">
+            <!-- populated by JS -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/suspects.js') }}"></script>
+{% endblock %}

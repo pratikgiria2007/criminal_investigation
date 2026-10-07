@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Criminal Investigation Database — Secure law enforcement case management system">
+    <title>{% block title %}C.I.D. SYSTEM{% endblock %} — Criminal Investigation DB</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="sidebar-icon">⚖️</div>
+                    <div class="sidebar-brand-text">
+                        <h2>C.I.D.</h2>
+                        <span>Investigation System</span>
+                    </div>
+                </div>
+                <div class="sidebar-status">
+                    <div class="status-dot"></div>
+                    SYSTEM ACTIVE
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <div class="nav-section-label">Navigation</div>
+                    <li>
+                        <a href="{{ url_for('dashboard.index') }}" 
+                           class="{% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
+                           id="nav-dashboard">
+                            <span class="nav-icon">📊</span>
+                            Command Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('cases.list_cases') }}" 
+                           class="{% if request.endpoint in ['cases.list_cases', 'cases.case_detail'] %}active{% endif %}"
+                           id="nav-cases">
+                            <span class="nav-icon">🗂️</span>
+                            Case Directory
+                            <span class="nav-badge" id="sidebar-case-count" style="display:none;"></span>
+                        </a>
+                    </li>
+
+                    <div class="nav-section-label">Persons</div>
+                    <li>
+                        <a href="{{ url_for('suspects.list_suspects') }}" 
+                           class="{% if request.endpoint == 'suspects.list_suspects' %}active{% endif %}"
+                           id="nav-suspects">
+                            <span class="nav-icon">🔍</span>
+                            Suspects DB
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('witnesses.list_witnesses') }}"
+                           class="{% if request.endpoint == 'witnesses.list_witnesses' %}active{% endif %}"
+                           id="nav-witnesses">
+                            <span class="nav-icon">👁️</span>
+                            Witnesses
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('officers.list_officers') }}"
+                           class="{% if request.endpoint == 'officers.list_officers' %}active{% endif %}"
+                           id="nav-officers">
+                            <span class="nav-icon">🪪</span>
+                            Officers
+                        </a>
+                    </li>
+
+                    <div class="nav-section-label">Forensics & Field</div>
+                    <li>
+                        <a href="{{ url_for('evidence.list_evidence') }}"
+                           class="{% if request.endpoint == 'evidence.list_evidence' %}active{% endif %}"
+                           id="nav-evidence">
+                            <span class="nav-icon">🧪</span>
+                            Evidence Log
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('crime_scenes.list_crime_scenes') }}"
+                           class="{% if request.endpoint == 'crime_scenes.list_crime_scenes' %}active{% endif %}"
+                           id="nav-scenes">
+                            <span class="nav-icon">📍</span>
+                            Crime Scenes
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('forensics.forensics_page') }}"
+                           class="{% if request.endpoint == 'forensics.forensics_page' %}active{% endif %}"
+                           id="nav-forensics">
+                            <span class="nav-icon">🧬</span>
+                            DNA &amp; Fingerprints
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('interrogations.list_interrogations') }}"
+                           class="{% if request.endpoint == 'interrogations.list_interrogations' %}active{% endif %}"
+                           id="nav-interrogations">
+                            <span class="nav-icon">🎙️</span>
+                            Interrogations
+                        </a>
+                    </li>
+
+                    <div class="nav-section-label">Analytics</div>
+                    <li>
+                        <a href="#" onclick="window.location.href='/'" id="nav-intel">
+                            <span class="nav-icon">📈</span>
+                            Intelligence Hub
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                {% if session.get('username') %}
+                <div class="sidebar-user">
+                    <div class="user-avatar" id="sidebar-avatar">{{ session.get('username', 'U')[0].upper() }}</div>
+                    <div class="user-details">
+                        <div class="user-name">{{ session.get('username') }}</div>
+                        <span class="user-role-text">{{ session.get('role', 'Casual') }} Access</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="sidebar-clock" id="live-time">--:--:--</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button id="mobile-menu-btn" class="btn-icon" aria-label="Toggle menu">☰</button>
+                    <div>
+                        <h1>{% block page_title %}Overview{% endblock %}</h1>
+                        <div class="breadcrumb" style="display:none;" id="breadcrumb">
+                            <span>Home</span>
+                            <span class="breadcrumb-sep">›</span>
+                            <span>{% block page_title_short %}{% endblock %}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="global-search" id="global-search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="search" id="global-search-input" placeholder="Search cases, suspects..." autocomplete="off">
+                </div>
+
+                {% if session.get('user_id') %}
+                <div class="topbar-right">
+                    <div class="topbar-user">
+                        <div class="user-avatar" style="width:28px;height:28px;font-size:0.75rem;">
+                            {{ session.get('username', 'U')[0].upper() }}
+                        </div>
+                        <span style="font-size:0.82rem; color:var(--text-main);">{{ session.get('username') }}</span>
+                        <span class="badge badge-{% if session.get('role') == 'Official' %}blue{% else %}default{% endif %}">
+                            {{ session.get('role') }}
+                        </span>
+                    </div>
+                    <button id="logout-btn" aria-label="Logout">
+                        🚪 Logout
+                    </button>
+                </div>
+                {% endif %}
+            </header>
+
+            <div class="content-wrapper">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Base Scripts -->
+    <script>
+        // Live Clock
+        function updateClock() {
+            const el = document.getElementById('live-time');
+            if (el) el.innerText = new Date().toLocaleTimeString('en-IN', { hour12: false });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Mobile Sidebar Toggle
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        function openSidebar() {
+            sidebar.classList.add('mobile-open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        if (menuBtn) menuBtn.addEventListener('click', openSidebar);
+        if (overlay) overlay.addEventListener('click', closeSidebar);
+
+        // Logout
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                fetch('/api/logout', { method: 'POST' })
+                    .then(() => window.location.href = '/login');
+            });
+        }
+
+        // Global Toast Notification System
+        window.showToast = function(message, type = 'info', duration = 3500) {
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        };
+
+        // Load sidebar case count
+        fetch('/api/cases')
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.length) {
+                    const badge = document.getElementById('sidebar-case-count');
+                    if (badge) {
+                        const openCount = data.filter(c => c.status === 'Open' || c.status === 'Under Investigation').length;
+                        if (openCount > 0) {
+                            badge.innerText = openCount;
+                            badge.style.display = '';
+                        }
+                    }
+                }
+            }).catch(() => {});
+
+        // Global Search (basic — navigates to cases with filter)
+        const searchInput = document.getElementById('global-search-input');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const q = this.value.trim();
+                if (q.length > 1) {
+                    searchTimeout = setTimeout(() => {
+                        window.location.href = `/cases?q=${encodeURIComponent(q)}`;
+                    }, 600);
+                }
+            });
+        }
+
+        // Number count-up animation
+        window.animateCount = function(el, target, duration = 800) {
+            const start = 0;
+            const range = target - start;
+            const startTime = performance.now();
+            function step(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(start + range * eased);
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        };
+
+        // ── Global Modal Helpers ─────────────────────────────────────────────
+        // All modals use .modal-overlay with display toggled via JS.
+        // Usage: openModal('my-modal-id') / closeModal('my-modal-id')
+        window.openModal = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'flex';
+        };
+        window.closeModal = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        };
+        // Close any modal when clicking its backdrop
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('modal-overlay')) {
+                e.target.style.display = 'none';
+            }
+        });
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay').forEach(m => {
+                    if (m.style.display === 'flex') m.style.display = 'none';
+                });
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Crime Scenes{% endblock %}
+{% block page_title %}Crime Scene Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-text">
+        <h2>Crime Scenes</h2>
+        <p>Geolocated scenes with timestamps and collected evidence</p>
+    </div>
+    {% if session.get('role') == 'Official' %}
+    <button class="btn btn-primary btn-sm" id="btn-add-scene">＋ Add Scene</button>
+    {% endif %}
+</div>
+
+<!-- Stats -->
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;">
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0;">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Total Scenes</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--text-white);" id="scene-total">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-amber-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">With Evidence</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-amber);" id="scene-evidence">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:#3b82f620;">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Cases Covered</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:#3b82f6;" id="scene-cases">—</div>
+    </div>
+</div>
+
+<div class="card full-width">
+    <div class="table-toolbar">
+        <div class="table-search">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="scene-search" placeholder="Search location, case..." autocomplete="off">
+        </div>
+        <div style="margin-left:auto; font-size:0.78rem; color:var(--text-muted);">
+            <span id="scenes-count" style="color:var(--text-light); font-weight:600;">—</span> scenes
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table" id="scenes-table">
+            <thead>
+                <tr>
+                    <th style="width:60px;">ID</th>
+                    <th>Location</th>
+                    <th>Case</th>
+                    <th>Timestamp</th>
+                    <th>Coordinates</th>
+                    <th>Secured By</th>
+                    <th>Evidence</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="scenes-tbody">
+                <tr><td colspan="8" class="table-empty"><span class="table-empty-icon">📍</span> Loading scenes...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="scene-modal" style="display:none;">
+    <div class="modal" style="max-width:520px;">
+        <div class="modal-header">
+            <h3 id="scene-modal-title">Add Crime Scene</h3>
+            <button class="modal-close" id="scene-modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="scene-id">
+            <div class="form-group">
+                <label>Case ID *</label>
+                <input type="number" id="scene-case-id" placeholder="Linked case ID">
+            </div>
+            <div class="form-group">
+                <label>Location Description *</label>
+                <input type="text" id="scene-location" placeholder="e.g. 42 Baker St, Alley behind warehouse">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Latitude</label>
+                    <input type="number" step="0.000001" id="scene-lat" placeholder="e.g. 28.6139">
+                </div>
+                <div class="form-group">
+                    <label>Longitude</label>
+                    <input type="number" step="0.000001" id="scene-lng" placeholder="e.g. 77.2090">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Timestamp *</label>
+                <input type="datetime-local" id="scene-timestamp">
+            </div>
+            <div class="form-group">
+                <label>Secured By (Officer ID)</label>
+                <input type="number" id="scene-secured" placeholder="Officer ID">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="scene-cancel-btn">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="scene-save-btn">Save Scene</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allScenes = [];
+
+async function loadScenes() {
+    const res = await fetch('/api/crime-scenes');
+    if (!res.ok) return;
+    allScenes = await res.json();
+    const uniqueCases = new Set(allScenes.map(s => s.case_id)).size;
+    document.getElementById('scene-total').textContent = allScenes.length;
+    document.getElementById('scene-evidence').textContent = allScenes.filter(s => (s.evidence_count || 0) > 0).length;
+    document.getElementById('scene-cases').textContent = uniqueCases;
+    renderScenes(allScenes);
+}
+
+function renderScenes(data) {
+    const tbody = document.getElementById('scenes-tbody');
+    document.getElementById('scenes-count').textContent = data.length;
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="table-empty"><span class="table-empty-icon">📍</span> No crime scenes found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(s => {
+        const ts = s.timestamp ? new Date(s.timestamp).toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'}) : '—';
+        const coords = s.latitude && s.longitude
+            ? `<a href="https://maps.google.com/?q=${s.latitude},${s.longitude}" target="_blank" style="color:var(--accent-amber); font-size:0.78rem;">📍 ${parseFloat(s.latitude).toFixed(4)}, ${parseFloat(s.longitude).toFixed(4)}</a>`
+            : '—';
+        return `
+        <tr>
+            <td><span class="badge badge-default">#${s.scene_id}</span></td>
+            <td><strong>${s.location_description || '—'}</strong></td>
+            <td><a href="/cases/${s.case_id}" style="color:var(--accent-amber);">${s.case_title || s.case_id}</a></td>
+            <td style="font-family:var(--font-mono); font-size:0.8rem;">${ts}</td>
+            <td>${coords}</td>
+            <td style="font-size:0.82rem;">${s.secured_by || '—'}</td>
+            <td>${s.evidence_count != null ? `<span class="badge badge-default">${s.evidence_count} items</span>` : '—'}</td>
+            <td>
+                <button class="btn btn-ghost btn-sm" onclick="editScene(${s.scene_id})" title="Edit">✏️</button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteScene(${s.scene_id})" title="Delete" style="color:var(--accent-red);">🗑️</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+document.getElementById('scene-search').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    renderScenes(allScenes.filter(s =>
+        (s.location_description||'').toLowerCase().includes(q) ||
+        (s.case_title||'').toLowerCase().includes(q)
+    ));
+});
+
+
+
+
+document.getElementById('btn-add-scene')?.addEventListener('click', () => openSceneModal('Add Crime Scene'));
+document.getElementById('scene-modal-close').addEventListener('click', closeSceneModal);
+document.getElementById('scene-cancel-btn').addEventListener('click', closeSceneModal);
+
+async function editScene(id) {
+    const res = await fetch(`/api/crime-scenes/${id}`);
+    const s = await res.json();
+    document.getElementById('scene-id').value = s.scene_id;
+    document.getElementById('scene-case-id').value = s.case_id || '';
+    document.getElementById('scene-location').value = s.location_description || '';
+    document.getElementById('scene-lat').value = s.latitude || '';
+    document.getElementById('scene-lng').value = s.longitude || '';
+    document.getElementById('scene-timestamp').value = s.timestamp ? s.timestamp.replace(' ', 'T').slice(0,16) : '';
+    document.getElementById('scene-secured').value = s.secured_by || '';
+    openSceneModal('Edit Crime Scene');
+}
+
+document.getElementById('scene-save-btn').addEventListener('click', async () => {
+    const id = document.getElementById('scene-id').value;
+    const payload = {
+        case_id: document.getElementById('scene-case-id').value,
+        location_description: document.getElementById('scene-location').value,
+        latitude: document.getElementById('scene-lat').value || null,
+        longitude: document.getElementById('scene-lng').value || null,
+        timestamp: document.getElementById('scene-timestamp').value,
+        secured_by: document.getElementById('scene-secured').value || null
+    };
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/crime-scenes/${id}` : '/api/crime-scenes';
+    const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    showToast(res.ok ? data.message : (data.error || 'Error'), res.ok ? 'success' : 'error');
+    if (res.ok) { closeSceneModal(); loadScenes(); }
+});
+
+async function deleteScene(id) {
+    if (!confirm('Delete this crime scene? All linked evidence will be unlinked.')) return;
+    const res = await fetch(`/api/crime-scenes/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    showToast(data.message || data.error, res.ok ? 'success' : 'error');
+    if (res.ok) loadScenes();
+}
+
+loadScenes();
+</script>
+{% endblock %}

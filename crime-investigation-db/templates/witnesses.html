@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}Witnesses{% endblock %}
+{% block page_title %}Witness Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-text">
+        <h2>Witness Records</h2>
+        <p>Witness statements and protection status across all investigations</p>
+    </div>
+    {% if session.get('role') == 'Official' %}
+    <button class="btn btn-primary btn-sm" id="btn-add-witness">＋ Add Witness</button>
+    {% endif %}
+</div>
+
+<!-- Stats -->
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;">
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0;">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Total Witnesses</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--text-white);" id="wit-total">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-amber-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Anonymous</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-amber);" id="wit-anon">—</div>
+    </div>
+    <div class="card" style="padding:16px 20px; text-align:center; margin-bottom:0; border-color:var(--accent-red-border);">
+        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Under Protection</div>
+        <div style="font-size:2rem; font-family:var(--font-mono); font-weight:700; color:var(--accent-red);" id="wit-protected">—</div>
+    </div>
+</div>
+
+<div class="card full-width">
+    <div class="table-toolbar">
+        <div class="table-search">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="witness-search" placeholder="Search witnesses..." autocomplete="off">
+        </div>
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="anon">🕵️ Anonymous</button>
+            <button class="filter-btn" data-filter="protected">🛡️ Protected</button>
+        </div>
+        <div style="margin-left:auto; font-size:0.78rem; color:var(--text-muted);">
+            <span id="witnesses-count" style="color:var(--text-light); font-weight:600;">—</span> shown
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table" id="witnesses-table">
+            <thead>
+                <tr>
+                    <th style="width:60px;">ID</th>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Anonymous</th>
+                    <th>Protection</th>
+                    <th>Cases</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="witnesses-tbody">
+                <tr><td colspan="7" class="table-empty"><span class="table-empty-icon">👁️</span> Loading witnesses...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="witness-modal" style="display:none;">
+    <div class="modal" style="max-width:520px;">
+        <div class="modal-header">
+            <h3 id="witness-modal-title">Add Witness</h3>
+            <button class="modal-close" id="witness-modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="witness-id">
+            <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="witness-name" placeholder="Witness name (or alias)">
+            </div>
+            <div class="form-group">
+                <label>Contact Info</label>
+                <input type="text" id="witness-contact" placeholder="Phone / email">
+            </div>
+            <div class="form-group">
+                <label>Address</label>
+                <input type="text" id="witness-address" placeholder="Residential address">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Anonymous?</label>
+                    <select id="witness-anon">
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Protection Status</label>
+                    <select id="witness-protection">
+                        <option value="None">None</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Witness Protection">Witness Protection</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Optional: link to a case right away -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Link to Case ID (optional)</label>
+                    <input type="number" id="witness-case-id" placeholder="Case ID">
+                </div>
+            </div>
+            <div class="form-group" id="statement-group" style="display:none;">
+                <label>Statement</label>
+                <textarea id="witness-statement" rows="3" placeholder="Witness statement for this case..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="witness-cancel-btn">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="witness-save-btn">Save Witness</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allWitnesses = [];
+let activeFilter = 'all';
+
+document.getElementById('witness-case-id').addEventListener('input', function() {
+    document.getElementById('statement-group').style.display = this.value ? 'block' : 'none';
+});
+
+async function loadWitnesses() {
+    const res = await fetch('/api/witnesses');
+    if (!res.ok) return;
+    allWitnesses = await res.json();
+    document.getElementById('wit-total').textContent = allWitnesses.length;
+    document.getElementById('wit-anon').textContent = allWitnesses.filter(w => w.is_anonymous).length;
+    document.getElementById('wit-protected').textContent = allWitnesses.filter(w => w.protection_status && w.protection_status !== 'None').length;
+    applyFilter();
+}
+
+function applyFilter() {
+    let data = [...allWitnesses];
+    const q = document.getElementById('witness-search').value.toLowerCase();
+    if (q) data = data.filter(w => (w.name||'').toLowerCase().includes(q) || (w.contact_info||'').toLowerCase().includes(q));
+    if (activeFilter === 'anon') data = data.filter(w => w.is_anonymous);
+    if (activeFilter === 'protected') data = data.filter(w => w.protection_status && w.protection_status !== 'None');
+    renderWitnesses(data);
+}
+
+function renderWitnesses(data) {
+    const tbody = document.getElementById('witnesses-tbody');
+    document.getElementById('witnesses-count').textContent = data.length;
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty"><span class="table-empty-icon">👁️</span> No witnesses found</td></tr>';
+        return;
+    }
+    const protectionColor = { 'High': 'var(--accent-red)', 'Witness Protection': 'var(--accent-red)', 'Medium': 'var(--accent-amber)', 'Low': '#3b82f6', 'None': 'var(--text-muted)' };
+    tbody.innerHTML = data.map(w => `
+        <tr>
+            <td><span class="badge badge-default">#${w.witness_id}</span></td>
+            <td><strong>${w.is_anonymous ? '⬛ [ANONYMOUS]' : w.name}</strong></td>
+            <td style="font-size:0.82rem; color:var(--text-muted);">${w.is_anonymous ? '—' : (w.contact_info || '—')}</td>
+            <td>${w.is_anonymous ? '<span class="badge badge-red">Yes</span>' : '<span class="badge badge-default">No</span>'}</td>
+            <td><span style="color:${protectionColor[w.protection_status] || 'var(--text-muted)'}; font-weight:600;">${w.protection_status || 'None'}</span></td>
+            <td>${w.case_count ?? '—'}</td>
+            <td>
+                <button class="btn btn-ghost btn-sm" onclick="editWitness(${w.witness_id})" title="Edit">✏️</button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteWitness(${w.witness_id}, '${w.is_anonymous ? 'Witness' : w.name}')" title="Delete" style="color:var(--accent-red);">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+document.getElementById('witness-search').addEventListener('input', applyFilter);
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        activeFilter = this.dataset.filter;
+        applyFilter();
+    });
+});
+
+
+
+
+document.getElementById('btn-add-witness')?.addEventListener('click', () => openWitnessModal('Add Witness'));
+document.getElementById('witness-modal-close').addEventListener('click', closeWitnessModal);
+document.getElementById('witness-cancel-btn').addEventListener('click', closeWitnessModal);
+
+async function editWitness(id) {
+    const res = await fetch(`/api/witnesses/${id}`);
+    const w = await res.json();
+    document.getElementById('witness-id').value = w.witness_id;
+    document.getElementById('witness-name').value = w.name || '';
+    document.getElementById('witness-contact').value = w.contact_info || '';
+    document.getElementById('witness-address').value = w.address || '';
+    document.getElementById('witness-anon').value = w.is_anonymous ? '1' : '0';
+    document.getElementById('witness-protection').value = w.protection_status || 'None';
+    openWitnessModal('Edit Witness');
+}
+
+document.getElementById('witness-save-btn').addEventListener('click', async () => {
+    const id = document.getElementById('witness-id').value;
+    const payload = {
+        name: document.getElementById('witness-name').value,
+        contact_info: document.getElementById('witness-contact').value,
+        address: document.getElementById('witness-address').value,
+        is_anonymous: parseInt(document.getElementById('witness-anon').value),
+        protection_status: document.getElementById('witness-protection').value,
+        case_id: document.getElementById('witness-case-id').value || null,
+        statement: document.getElementById('witness-statement').value || null
+    };
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/witnesses/${id}` : '/api/witnesses';
+    const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    showToast(res.ok ? data.message : (data.error || 'Error'), res.ok ? 'success' : 'error');
+    if (res.ok) { closeWitnessModal(); loadWitnesses(); }
+});
+
+async function deleteWitness(id, name) {
+    if (!confirm(`Delete witness record for "${name}"?`)) return;
+    const res = await fetch(`/api/witnesses/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    showToast(data.message || data.error, res.ok ? 'success' : 'error');
+    if (res.ok) loadWitnesses();
+}
+
+loadWitnesses();
+</script>
+{% endblock %}

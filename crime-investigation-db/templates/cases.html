@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Case Directory{% endblock %}
+{% block page_title %}Case Directory{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-text">
+        <h2>Active &amp; Archived Cases</h2>
+        <p>All investigations on record — click any case to open the full file</p>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+        {% if session.get('role') == 'Official' %}
+        <button class="btn btn-primary" id="btn-new-case">
+            ➕ New Case
+        </button>
+        {% endif %}
+        <button class="btn btn-ghost btn-sm" id="btn-refresh-cases" title="Refresh">🔄</button>
+    </div>
+</div>
+
+<div class="card full-width">
+    <!-- Toolbar -->
+    <div class="table-toolbar">
+        <div class="table-search">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="case-search" placeholder="Search by title, officer..." autocomplete="off">
+        </div>
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="Open">Open</button>
+            <button class="filter-btn" data-filter="Under Investigation">Active</button>
+            <button class="filter-btn" data-filter="Solved">Solved</button>
+            <button class="filter-btn" data-filter="Cold Case">Cold Case</button>
+        </div>
+        <div style="margin-left:auto; font-size:0.78rem; color:var(--text-muted);">
+            Showing <span id="cases-count" style="color:var(--text-light); font-weight:600;">—</span> cases
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table" id="cases-table">
+            <thead>
+                <tr>
+                    <th data-sort="case_id" style="width:70px;">ID ⬍</th>
+                    <th data-sort="case_title">Title</th>
+                    <th data-sort="status">Status</th>
+                    <th data-sort="lead_officer">Lead Officer</th>
+                    <th data-sort="suspect_count" style="width:100px;">Suspects</th>
+                    <th data-sort="evidence_count" style="width:100px;">Evidence</th>
+                    <th style="width:80px;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="cases-tbody">
+                <tr>
+                    <td colspan="7" class="table-empty">
+                        <span class="table-empty-icon">🗂️</span>
+                        Loading case files...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- New Case Modal -->
+<div id="new-case-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">🗂️ Create New Case</h2>
+            <button class="close-modal" id="close-case-modal" aria-label="Close">&times;</button>
+        </div>
+        <form id="new-case-form" novalidate>
+            <div class="form-group">
+                <label for="case_title">Case Title *</label>
+                <input type="text" id="case_title" name="case_title" class="form-control" 
+                       placeholder="e.g. The Riverside Homicide" required maxlength="150">
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="3"
+                          placeholder="Brief summary of the incident..."></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="status">Status</label>
+                    <select id="status" name="status" class="form-control">
+                        <option value="Open">🔓 Open</option>
+                        <option value="Under Investigation">🔎 Under Investigation</option>
+                        <option value="Solved">✅ Solved</option>
+                        <option value="Closed">🔒 Closed</option>
+                        <option value="Cold Case">❄️ Cold Case</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="date_opened">Date Opened *</label>
+                    <input type="date" id="date_opened" name="date_opened" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:14px;">
+                <label for="lead_officer_id">Lead Officer ID <span style="color:var(--text-muted); font-size:0.75rem;">(optional)</span></label>
+                <input type="number" id="lead_officer_id" name="lead_officer_id" class="form-control" 
+                       placeholder="Officer database ID" min="1">
+            </div>
+            <div id="case-form-error" style="display:none; color:var(--accent-red); font-size:0.82rem; margin-top:8px; padding:8px 12px; background:var(--accent-red-dim); border-radius:6px;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="cancel-case-btn">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="save-case-btn">💾 Save Case</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Case Modal -->
+<div id="edit-case-modal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>✏️ Update Case</h2>
+            <button class="close-modal" id="close-edit-modal">&times;</button>
+        </div>
+        <form id="edit-case-form" novalidate>
+            <input type="hidden" id="edit_case_id">
+            <div class="form-group">
+                <label for="edit_case_title">Case Title *</label>
+                <input type="text" id="edit_case_title" name="case_title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_description">Description</label>
+                <textarea id="edit_description" name="description" class="form-control" rows="3"></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="edit_status">Status</label>
+                    <select id="edit_status" name="status" class="form-control">
+                        <option value="Open">🔓 Open</option>
+                        <option value="Under Investigation">🔎 Under Investigation</option>
+                        <option value="Solved">✅ Solved</option>
+                        <option value="Closed">🔒 Closed</option>
+                        <option value="Cold Case">❄️ Cold Case</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="edit_lead_officer_id">Lead Officer ID</label>
+                    <input type="number" id="edit_lead_officer_id" name="lead_officer_id" class="form-control" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="cancel-edit-btn">Cancel</button>
+                <button type="submit" class="btn btn-primary">💾 Update Case</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const USER_ROLE = "{{ session.get('role', 'Casual') }}";
+</script>
+<script src="{{ url_for('static', filename='js/cases.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Command Dashboard{% endblock %}
+
+{% block content %}
+<!-- Hero Banner -->
+<div class="hero-section" style="margin-bottom: 24px;">
+    <div class="hero-content">
+        <div class="hero-tag">🔒 Secure Access</div>
+        <h2>Welcome to <span>C.I.D. SYSTEM</span></h2>
+        <p>Access the latest intelligence, active investigations, and forensic evidence reports. Stay sharp, officer.</p>
+        <div class="hero-actions">
+            <a href="/cases" class="btn btn-primary">🗂️ View All Cases</a>
+            {% if session.get('role') == 'Official' %}
+            <a href="/suspects" class="btn btn-ghost">🔍 Suspects DB</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-cards">
+    <div class="card stat-card blue">
+        <div class="stat-card-top">
+            <div class="stat-card-label">Total Cases</div>
+            <div class="stat-card-emoji">🗂️</div>
+        </div>
+        <div class="stat-number" id="stat-total-cases">—</div>
+        <div class="stat-trend">All investigations on record</div>
+    </div>
+
+    <div class="card stat-card amber">
+        <div class="stat-card-top">
+            <div class="stat-card-label">Open Cases</div>
+            <div class="stat-card-emoji">🔓</div>
+        </div>
+        <div class="stat-number" id="stat-open-cases">—</div>
+        <div class="stat-trend alert">⚡ Requiring attention</div>
+    </div>
+
+    <div class="card stat-card green">
+        <div class="stat-card-top">
+            <div class="stat-card-label">Solved Cases</div>
+            <div class="stat-card-emoji">✅</div>
+        </div>
+        <div class="stat-number" id="stat-solved-cases">—</div>
+        <div class="stat-trend up">↑ Closed successfully</div>
+    </div>
+
+    <div class="card stat-card red">
+        <div class="stat-card-top">
+            <div class="stat-card-label">Suspects</div>
+            <div class="stat-card-emoji">🔍</div>
+        </div>
+        <div class="stat-number" id="stat-total-suspects">—</div>
+        <div class="stat-trend">In database</div>
+    </div>
+
+    <div class="card stat-card cyan">
+        <div class="stat-card-top">
+            <div class="stat-card-label">Evidence Items</div>
+            <div class="stat-card-emoji">🧪</div>
+        </div>
+        <div class="stat-number" id="stat-total-evidence">—</div>
+        <div class="stat-trend">Logged &amp; tracked</div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="charts-row">
+    {% if session.get('role') == 'Official' %}
+    <!-- Officer Leaderboard -->
+    <div class="card" style="overflow:hidden;">
+        <div class="card-header">
+            <h3><span class="card-icon">🏆</span> Officer Leaderboard</h3>
+            <span class="badge badge-blue">Top Performers</span>
+        </div>
+        <p class="chart-subtitle">Cases solved per officer — refreshed live</p>
+        <div id="leaderboard-list" class="leaderboard-list">
+            <div class="skeleton" style="height:40px; border-radius:8px; margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:40px; border-radius:8px; margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:40px; border-radius:8px;"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Case Status Donut -->
+    <div class="card">
+        <div class="card-header">
+            <h3><span class="card-icon">📊</span> Case Status</h3>
+        </div>
+        <p class="chart-subtitle">Breakdown by investigation status</p>
+        <div style="position:relative; height:200px; width:100%;">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+
+    {% if session.get('role') == 'Official' %}
+    <!-- Critical Alerts -->
+    <div class="card alert-panel">
+        <div class="card-header">
+            <h3><span class="card-icon">🚨</span> <span class="text-red">Critical Alerts</span></h3>
+            <span class="badge badge-red badge-pulse">LIVE</span>
+        </div>
+        <h4 style="font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:12px;">
+            Cases with No Forensic Evidence
+        </h4>
+        <ul id="no-evidence-list" class="alert-list">
+            <li style="justify-content:center; color:var(--text-muted);">Loading alerts...</li>
+        </ul>
+    </div>
+    {% else %}
+    <!-- Public: Solve Rate Card -->
+    <div class="card" style="background: linear-gradient(135deg, #111418, rgba(16,185,129,0.05)); border-color: var(--accent-green-border);">
+        <div class="card-header">
+            <h3><span class="card-icon">📈</span> Solve Rate</h3>
+        </div>
+        <div style="text-align:center; padding: 20px 0;">
+            <div style="font-size:3.5rem; font-family:var(--font-mono); font-weight:800; color:var(--accent-green);" id="solve-rate-pct">—%</div>
+            <div style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;">Cases resolved to date</div>
+            <div class="progress-bar" style="margin-top:16px; height:6px;">
+                <div class="progress-fill" id="solve-rate-bar" style="width:0%; background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if session.get('role') == 'Official' %}
+<!-- Second row: Bar Chart + Recent Activity -->
+<div style="display:grid; grid-template-columns: 1.5fr 1fr; gap: 20px;">
+    <div class="card">
+        <div class="card-header">
+            <h3><span class="card-icon">📉</span> Cases Resolved Per Officer</h3>
+            <span class="badge badge-default">Bar Chart</span>
+        </div>
+        <div style="position:relative; height:220px; width:100%;">
+            <canvas id="officerChart"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><span class="card-icon">⚡</span> Recent Activity</h3>
+        </div>
+        <div class="activity-feed" id="recent-activity">
+            <div class="skeleton" style="height:50px; border-radius:8px; margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:50px; border-radius:8px; margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:50px; border-radius:8px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Fingerprint Cross-Scene Matches (Officials Only) -->
+<div class="card">
+    <div class="card-header">
+        <h3><span class="card-icon">🔬</span> Cross-Scene Fingerprint Matches</h3>
+        <span class="badge badge-cyan">Forensic Intelligence</span>
+    </div>
+    <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:16px;">
+        Fingerprints found at more than one crime scene — potential serial links.
+    </p>
+    <div id="fingerprint-matches">
+        <div style="text-align:center; color:var(--text-muted); padding:20px; font-size:0.85rem;">Loading forensic data...</div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+{% block title %}Case File #{{ case_id }}{% endblock %}
+{% block page_title %}Case File{% endblock %}
+
+{% block content %}
+<div class="case-detail-container">
+
+    <!-- Back -->
+    <div style="margin-bottom:16px;">
+        <a href="/cases" class="btn btn-ghost btn-sm">← Back to Case Directory</a>
+    </div>
+
+    <!-- ── Case Header Card ─────────────────────────────────────────────────── -->
+    <div class="case-header-card" id="case-header-card">
+        <div class="case-title-row">
+            <div>
+                <div class="case-id-label" id="case-id-label">CASE #{{ case_id }}</div>
+                <h1 class="case-main-title" id="case-title">Loading…</h1>
+            </div>
+            <div style="display:flex; gap:8px; align-items:flex-start; flex-shrink:0;" id="case-header-actions">
+                <span class="badge" id="case-status-badge">Loading</span>
+                {% if session.get('role') == 'Official' %}
+                <button class="btn btn-ghost btn-sm" id="btn-edit-case">✏️ Edit</button>
+                <button class="btn btn-danger btn-sm" id="btn-delete-case">🗑 Delete</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="case-meta">
+            <div class="case-meta-item">📅 <strong>Opened:</strong> <span id="case-opened">—</span></div>
+            <div class="case-meta-item">👮 <strong>Lead Officer:</strong> <span id="case-officer">—</span></div>
+            <div class="case-meta-item" id="closed-meta" style="display:none;">🔒 <strong>Closed:</strong> <span id="case-closed">—</span></div>
+        </div>
+        <div class="case-description" id="case-desc">Loading case details…</div>
+    </div>
+
+    <!-- ── Tabs ──────────────────────────────────────────────────────────────── -->
+    <div class="card" style="padding:0; overflow:hidden;">
+        <div class="case-tabs" style="padding:4px 4px 0;">
+            <button class="case-tab active" data-tab="scenes">📍 Crime Scenes <span class="tab-count" id="tab-scenes-count">0</span></button>
+            <button class="case-tab" data-tab="suspects">🔍 Suspects <span class="tab-count" id="tab-suspects-count">0</span></button>
+            <button class="case-tab" data-tab="evidence">🧪 Evidence <span class="tab-count" id="tab-evidence-count">0</span></button>
+            <button class="case-tab" data-tab="fingerprints">🖐️ Fingerprints <span class="tab-count" id="tab-fp-count">0</span></button>
+        </div>
+
+        <div style="padding:20px;">
+
+            <!-- ── SCENES TAB ──────────────────────────────────────────────── -->
+            <div class="tab-panel active" id="tab-scenes">
+                <div id="scenes-grid" class="detail-grid">
+                    <div class="detail-empty">📍 Loading scenes…</div>
+                </div>
+            </div>
+
+            <!-- ── SUSPECTS TAB ────────────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-suspects">
+                {% if session.get('role') == 'Official' %}
+                <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+                    <button class="btn btn-primary btn-sm" id="btn-link-suspect">🔗 Link Suspect</button>
+                </div>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="data-table" id="suspects-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">ID</th>
+                                <th>Name</th>
+                                <th>Gender</th>
+                                <th>DOB</th>
+                                <th>Nationality</th>
+                                <th>Criminal Record</th>
+                                <th>Role in Case</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suspects-tbody">
+                            <tr><td colspan="7" class="table-empty"><span class="table-empty-icon">🔍</span> Loading suspects…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── EVIDENCE TAB ───────────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-evidence">
+                {% if session.get('role') == 'Official' %}
+                <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+                    <button class="btn btn-primary btn-sm" id="btn-add-evidence">➕ Log Evidence</button>
+                </div>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="data-table" id="evidence-table">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">ID</th>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th>Date Collected</th>
+                                <th>Storage Location</th>
+                                <th>Scene</th>
+                            </tr>
+                        </thead>
+                        <tbody id="evidence-tbody">
+                            <tr><td colspan="6" class="table-empty"><span class="table-empty-icon">🧪</span> Loading evidence…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── FINGERPRINTS TAB ───────────────────────────────────────── -->
+            <div class="tab-panel" id="tab-fingerprints">
+                <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+                    <button class="btn btn-primary btn-sm" id="btn-add-fp">🖐️ Add Fingerprint</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="fp-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">ID</th>
+                                <th>Scene</th>
+                                <th>Evidence Ref</th>
+                                <th>Pattern Type</th>
+                                <th>Match Reference</th>
+                                <th>Suspect Match</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fp-tbody">
+                            <tr><td colspan="7" class="table-empty"><span class="table-empty-icon">🖐️</span> Loading fingerprints…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     MODALS (Officials only)
+════════════════════════════════════════════════════════════════════════════ -->
+{% if session.get('role') == 'Official' %}
+
+<!-- Edit Case Modal -->
+<div class="modal-overlay" id="edit-case-modal" style="display:none;">
+    <div class="modal" style="max-width:520px;">
+        <div class="modal-header">
+            <h3>✏️ Edit Case #{{ case_id }}</h3>
+            <button class="modal-close" id="close-edit-modal">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Case Title *</label>
+                <input type="text" id="edit_title" placeholder="Case title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="edit_desc" rows="3" placeholder="Case description…"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="edit_status_sel">
+                        <option value="Open">🔓 Open</option>
+                        <option value="Under Investigation">🔎 Under Investigation</option>
+                        <option value="Solved">✅ Solved</option>
+                        <option value="Closed">🔒 Closed</option>
+                        <option value="Cold Case">❄️ Cold Case</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Lead Officer ID</label>
+                    <input type="number" id="edit_officer" placeholder="Officer ID" min="1">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="cancel-edit">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="save-edit-btn">💾 Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Link Suspect Modal -->
+<div class="modal-overlay" id="link-suspect-modal" style="display:none;">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <h3>🔗 Link Suspect to Case</h3>
+            <button class="modal-close" id="close-link-modal">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Suspect ID *</label>
+                <input type="number" id="link_suspect_id" placeholder="Enter suspect database ID" min="1">
+            </div>
+            <div class="form-group">
+                <label>Role in Case</label>
+                <select id="link_role">
+                    <option value="Person of Interest">Person of Interest</option>
+                    <option value="Accomplice">Accomplice</option>
+                    <option value="Primary">Primary Suspect</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="cancel-link">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="save-link-btn">🔗 Link Suspect</button>
+        </div>
+    </div>
+</div>
+
+<!-- Log Evidence Modal -->
+<div class="modal-overlay" id="evidence-modal" style="display:none;">
+    <div class="modal" style="max-width:500px;">
+        <div class="modal-header">
+            <h3>🧪 Log New Evidence</h3>
+            <button class="modal-close" id="close-evidence-modal">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Description *</label>
+                <textarea id="ev_desc" rows="2" placeholder="Description of the evidence item…"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="ev_type">
+                        <option value="Physical">Physical</option>
+                        <option value="Digital">Digital</option>
+                        <option value="Forensic">Forensic</option>
+                        <option value="Documentary">Documentary</option>
+                        <option value="Testimonial">Testimonial</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Date Collected</label>
+                    <input type="date" id="ev_date">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Storage Location</label>
+                <input type="text" id="ev_storage" placeholder="e.g. Evidence Room A, Shelf 3">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="cancel-evidence">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="save-evidence-btn">💾 Log Evidence</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Fingerprint Modal -->
+<div class="modal-overlay" id="fp-modal" style="display:none;">
+    <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+            <h3>🖐️ Add Fingerprint Record</h3>
+            <button class="modal-close" id="close-fp-modal">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Scene ID (optional)</label>
+                    <input type="number" id="fp_scene_id" placeholder="Crime Scene ID">
+                </div>
+                <div class="form-group">
+                    <label>Evidence ID (optional)</label>
+                    <input type="number" id="fp_evidence_id" placeholder="Evidence ID">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pattern Type</label>
+                    <select id="fp_pattern">
+                        <option>Loop</option>
+                        <option>Whorl</option>
+                        <option>Arch</option>
+                        <option>Unknown</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Match Reference</label>
+                    <input type="text" id="fp_match_ref" placeholder="e.g. FP-REF-2024-03">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Matched Suspect ID (if any)</label>
+                <input type="number" id="fp_suspect_id" placeholder="Suspect ID">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="fp_notes" rows="2" placeholder="Forensic notes…"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost btn-sm" id="cancel-fp">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="save-fp-btn">💾 Save</button>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<script>
+    const CASE_ID = parseInt("{{ case_id }}");
+    const USER_ROLE = "{{ session.get('role', 'Casual') }}";
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── helpers ──────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function bindClose(modalId, ...btnIds) {
+    const el = document.getElementById(modalId);
+    if (!el) return;
+    btnIds.forEach(bid => {
+        const b = document.getElementById(bid);
+        if (b) b.addEventListener('click', () => closeModal(modalId));
+    });
+    el.addEventListener('click', e => { if (e.target === el) closeModal(modalId); });
+}
+
+function getStatusBadge(status) {
+    const map = { 'Open':'badge-open', 'Under Investigation':'badge-investigation badge-pulse', 'Solved':'badge-solved', 'Closed':'badge-green', 'Cold Case':'badge-default' };
+    return `<span class="badge ${map[status]||'badge-default'}">${status}</span>`;
+}
+
+const typeColors = { Physical:'var(--accent-amber)', Digital:'#3b82f6', Forensic:'#22c55e', Documentary:'#a78bfa', Testimonial:'var(--text-muted)' };
+const roleColors  = { 'Primary':'var(--accent-red)', 'Accomplice':'var(--accent-amber)', 'Person of Interest':'#3b82f6' };
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.case-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.case-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+});
+
+// ── Load case data ────────────────────────────────────────────────────────────
+let caseData = {};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const res = await fetch(`/api/cases/${CASE_ID}`);
+    caseData = await res.json();
+    if (caseData.error) { showToast('Error loading case: ' + caseData.error, 'error'); return; }
+
+    document.title = `Case #${CASE_ID}: ${caseData.case_title} — C.I.D. SYSTEM`;
+    document.getElementById('case-title').textContent = caseData.case_title;
+    document.getElementById('case-status-badge').outerHTML = getStatusBadge(caseData.status);
+    document.getElementById('case-opened').textContent = caseData.date_opened
+        ? new Date(caseData.date_opened).toLocaleDateString('en-IN', {year:'numeric',month:'long',day:'numeric'})
+        : 'Unknown';
+
+    const officer = caseData.officer ? `${caseData.officer.name} (Badge: ${caseData.officer.badge_number})` : 'Unassigned';
+    document.getElementById('case-officer').textContent = officer;
+
+    if (caseData.date_closed) {
+        document.getElementById('closed-meta').style.display = '';
+        document.getElementById('case-closed').textContent = new Date(caseData.date_closed).toLocaleDateString();
+    }
+    document.getElementById('case-desc').textContent = caseData.description || 'No description provided.';
+
+    renderScenes(caseData.scenes || []);
+
+    if (USER_ROLE === 'Official') {
+        renderSuspects(caseData.suspects || []);
+        renderEvidence(caseData.evidence  || []);
+        await loadFingerprints();
+        setupModals();
+    }
+});
+
+// ── SCENES ────────────────────────────────────────────────────────────────────
+function renderScenes(scenes) {
+    document.getElementById('tab-scenes-count').textContent = scenes.length;
+    const grid = document.getElementById('scenes-grid');
+    if (!scenes.length) {
+        grid.innerHTML = '<div class="detail-empty"><span style="font-size:2rem;">📍</span><br>No crime scenes logged yet.</div>';
+        return;
+    }
+    grid.innerHTML = scenes.map(sc => {
+        const sc_time = sc.timestamp || sc.date_occurred;
+        const ts = sc_time ? new Date(sc_time).toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'}) : 'Unknown';
+        const coords = sc.latitude && sc.longitude
+            ? `<a href="https://maps.google.com/?q=${sc.latitude},${sc.longitude}" target="_blank" class="coords-link">📍 ${parseFloat(sc.latitude).toFixed(4)}, ${parseFloat(sc.longitude).toFixed(4)}</a>`
+            : '<span style="color:var(--text-muted);">No coordinates</span>';
+        return `
+        <div class="detail-card scene-card">
+            <div class="detail-card-icon" style="background:var(--accent-blue-dim); color:#3b82f6;">📍</div>
+            <div class="detail-card-body">
+                <div class="detail-card-title">${sc.location_description || sc.location || 'Unknown Location'}</div>
+                <div class="detail-card-meta">
+                    <span>🕐 ${ts}</span>
+                    ${sc.secured_by ? `<span>🛡 Officer #${sc.secured_by}</span>` : ''}
+                </div>
+                <div style="margin-top:6px;">${coords}</div>
+            </div>
+            <span class="badge badge-default">Scene #${sc.scene_id}</span>
+        </div>`;
+    }).join('');
+}
+
+// ── SUSPECTS ──────────────────────────────────────────────────────────────────
+function renderSuspects(suspects) {
+    document.getElementById('tab-suspects-count').textContent = suspects.length;
+    const tbody = document.getElementById('suspects-tbody');
+    if (!suspects.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty"><span class="table-empty-icon">🔍</span> No suspects linked to this case.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = suspects.map(s => {
+        const roleColor = roleColors[s.role] || '#3b82f6';
+        const dob = s.dob ? new Date(s.dob).toLocaleDateString('en-IN') : '—';
+        return `<tr>
+            <td><span class="badge badge-default">#${s.suspect_id}</span></td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.gender || '—'}</td>
+            <td style="font-family:var(--font-mono); font-size:0.82rem;">${dob}</td>
+            <td>${s.nationality || '—'}</td>
+            <td>${s.criminal_record ? '<span style="color:var(--accent-red);font-weight:600;">Yes</span>' : '<span style="color:var(--text-muted);">No</span>'}</td>
+            <td><span class="role-pill" style="color:${roleColor}; border-color:${roleColor}30; background:${roleColor}12;">${s.role || '—'}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+// ── EVIDENCE ──────────────────────────────────────────────────────────────────
+function renderEvidence(evidence) {
+    document.getElementById('tab-evidence-count').textContent = evidence.length;
+    const tbody = document.getElementById('evidence-tbody');
+    if (!evidence.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="table-empty"><span class="table-empty-icon">🧪</span> No evidence logged yet.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = evidence.map(e => {
+        const color = typeColors[e.type] || 'var(--text-muted)';
+        const date  = e.date_collected ? e.date_collected.split('T')[0] : '—';
+        return `<tr>
+            <td><span class="badge badge-default">E-${e.evidence_id}</span></td>
+            <td><strong>${e.description || '—'}</strong></td>
+            <td><span style="color:${color}; font-weight:600; font-size:0.82rem;">${e.type || '—'}</span></td>
+            <td style="font-family:var(--font-mono); font-size:0.82rem;">${date}</td>
+            <td style="font-size:0.82rem; color:var(--text-muted);">${e.storage_location || '—'}</td>
+            <td>${e.scene_id ? `Scene #${e.scene_id}` : '—'}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── FINGERPRINTS ──────────────────────────────────────────────────────────────
+async function loadFingerprints() {
+    // Collect scene IDs from case then load fingerprints per scene
+    const scenes = caseData.scenes || [];
+    let allFP = [];
+    for (const sc of scenes) {
+        const r = await fetch(`/api/fingerprints?scene_id=${sc.scene_id}`);
+        if (r.ok) { const d = await r.json(); allFP = allFP.concat(d); }
+    }
+    // Also load any fingerprints on evidence items
+    for (const ev of caseData.evidence || []) {
+        const r = await fetch(`/api/fingerprints?evidence_id=${ev.evidence_id}`);
+        if (r.ok) {
+            const d = await r.json();
+            d.forEach(fp => { if (!allFP.find(x => x.fingerprint_id === fp.fingerprint_id)) allFP.push(fp); });
+        }
+    }
+    renderFingerprints(allFP);
+}
+
+function renderFingerprints(fps) {
+    document.getElementById('tab-fp-count').textContent = fps.length;
+    const tbody = document.getElementById('fp-tbody');
+    if (!fps.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty"><span class="table-empty-icon">🖐️</span> No fingerprint records for this case.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = fps.map(f => `<tr>
+        <td><span class="badge badge-default">#${f.fingerprint_id}</span></td>
+        <td>${f.scene_id ? `Scene #${f.scene_id}` : '—'}</td>
+        <td>${f.evidence_id ? `E-${f.evidence_id}` : '—'}</td>
+        <td>${f.pattern_type || '—'}</td>
+        <td><span style="font-family:var(--font-mono); color:var(--accent-amber); font-size:0.82rem;">${f.match_reference || '—'}</span></td>
+        <td>${f.matched_suspect_id ? `<span class="badge badge-red">Suspect #${f.matched_suspect_id}</span>` : '<span style="color:var(--text-muted);">Unmatched</span>'}</td>
+        <td style="font-size:0.82rem; color:var(--text-muted);">${f.notes || '—'}</td>
+    </tr>`).join('');
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function setupModals() {
+    // ── Edit Case ──
+    const editBtn = document.getElementById('btn-edit-case');
+    if (editBtn) {
+        editBtn.addEventListener('click', () => {
+            document.getElementById('edit_title').value       = caseData.case_title || '';
+            document.getElementById('edit_desc').value        = caseData.description || '';
+            document.getElementById('edit_status_sel').value  = caseData.status || 'Open';
+            document.getElementById('edit_officer').value     = caseData.lead_officer_id || '';
+            openModal('edit-case-modal');
+        });
+    }
+    bindClose('edit-case-modal', 'close-edit-modal', 'cancel-edit');
+
+    document.getElementById('save-edit-btn').addEventListener('click', async () => {
+        const payload = {
+            case_title: document.getElementById('edit_title').value,
+            description: document.getElementById('edit_desc').value,
+            status: document.getElementById('edit_status_sel').value,
+            lead_officer_id: parseInt(document.getElementById('edit_officer').value) || null
+        };
+        const res = await fetch(`/api/cases/${CASE_ID}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const d = await res.json();
+        showToast(res.ok ? 'Case updated successfully' : (d.error || 'Error'), res.ok ? 'success' : 'error');
+        if (res.ok) { closeModal('edit-case-modal'); setTimeout(() => location.reload(), 700); }
+    });
+
+    // ── Delete Case ──
+    const delBtn = document.getElementById('btn-delete-case');
+    if (delBtn) {
+        delBtn.addEventListener('click', async () => {
+            if (!confirm(`Delete Case #${CASE_ID}? This cannot be undone.`)) return;
+            const res = await fetch(`/api/cases/${CASE_ID}`, { method:'DELETE' });
+            const d = await res.json();
+            if (res.ok) { showToast('Case deleted', 'warning'); setTimeout(() => window.location.href = '/cases', 700); }
+            else showToast(d.error || 'Error deleting case', 'error');
+        });
+    }
+
+    // ── Link Suspect ──
+    document.getElementById('btn-link-suspect')?.addEventListener('click', () => openModal('link-suspect-modal'));
+    bindClose('link-suspect-modal', 'close-link-modal', 'cancel-link');
+
+    document.getElementById('save-link-btn').addEventListener('click', async () => {
+        const payload = {
+            suspect_id: parseInt(document.getElementById('link_suspect_id').value),
+            role: document.getElementById('link_role').value
+        };
+        if (!payload.suspect_id) { showToast('Enter a valid Suspect ID', 'warning'); return; }
+        const res = await fetch(`/api/cases/${CASE_ID}/suspects`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const d = await res.json();
+        showToast(res.ok ? 'Suspect linked to case' : (d.error || 'Error'), res.ok ? 'success' : 'error');
+        if (res.ok) { closeModal('link-suspect-modal'); setTimeout(() => location.reload(), 700); }
+    });
+
+    // ── Log Evidence ──
+    document.getElementById('btn-add-evidence')?.addEventListener('click', () => {
+        document.getElementById('ev_date').valueAsDate = new Date();
+        openModal('evidence-modal');
+    });
+    bindClose('evidence-modal', 'close-evidence-modal', 'cancel-evidence');
+
+    document.getElementById('save-evidence-btn').addEventListener('click', async () => {
+        const payload = {
+            case_id: CASE_ID,
+            description: document.getElementById('ev_desc').value,
+            type: document.getElementById('ev_type').value,
+            date_collected: document.getElementById('ev_date').value,
+            storage_location: document.getElementById('ev_storage').value,
+            scene_id: null
+        };
+        const res = await fetch('/api/evidence', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const d = await res.json();
+        showToast(res.ok ? 'Evidence logged' : (d.error || 'Error'), res.ok ? 'success' : 'error');
+        if (res.ok) { closeModal('evidence-modal'); setTimeout(() => location.reload(), 700); }
+    });
+
+    // ── Add Fingerprint ──
+    document.getElementById('btn-add-fp')?.addEventListener('click', () => openModal('fp-modal'));
+    bindClose('fp-modal', 'close-fp-modal', 'cancel-fp');
+
+    document.getElementById('save-fp-btn').addEventListener('click', async () => {
+        const payload = {
+            scene_id:          document.getElementById('fp_scene_id').value    || null,
+            evidence_id:       document.getElementById('fp_evidence_id').value || null,
+            pattern_type:      document.getElementById('fp_pattern').value,
+            match_reference:   document.getElementById('fp_match_ref').value   || null,
+            matched_suspect_id:document.getElementById('fp_suspect_id').value  || null,
+            notes:             document.getElementById('fp_notes').value        || null
+        };
+        const res = await fetch('/api/fingerprints', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const d = await res.json();
+        showToast(res.ok ? 'Fingerprint record saved' : (d.error || 'Error'), res.ok ? 'success' : 'error');
+        if (res.ok) { closeModal('fp-modal'); setTimeout(() => location.reload(), 700); }
+    });
+}
+</script>
+
+<style>
+/* ── Case detail page extras ─────────────────────────────────── */
+.detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.detail-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: border-color .2s, background .2s;
+}
+.detail-card:hover { border-color: var(--accent-amber-border); background: var(--bg-hover); }
+.detail-card-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+}
+.detail-card-body { flex: 1; }
+.detail-card-title { font-weight: 600; color: var(--text-white); margin-bottom: 4px; }
+.detail-card-meta {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 0.8rem; color: var(--text-muted);
+}
+.detail-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+.coords-link {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent-amber);
+    text-decoration: none;
+}
+.coords-link:hover { text-decoration: underline; }
+.role-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+}
+.badge-red {
+    background: var(--accent-red-dim);
+    color: var(--accent-red);
+    border: 1px solid var(--accent-red-border);
+}
+</style>
+{% endblock %}
